@@ -7,6 +7,7 @@ import osm = require('os');
 import path from 'path';
 import * as main from '../src/main';
 import * as im from '../src/installer';
+import { version } from 'punycode';
 
 let goJsonData = require('./data/golang-dl.json');
 let matchers = require('../matchers.json');
@@ -34,7 +35,7 @@ describe('setup-go', () => {
   let mkdirpSpy: jest.SpyInstance;
   let execSpy: jest.SpyInstance;
   let getManifestSpy: jest.SpyInstance;
-  let getInfoManifestSpy: jest.SpyInstance;
+  // let getInfoManifestSpy: jest.SpyInstance;
 
   beforeEach(() => {
     // @actions/core
@@ -57,7 +58,7 @@ describe('setup-go', () => {
     cacheSpy = jest.spyOn(tc, 'cacheDir');
     getSpy = jest.spyOn(im, 'getVersionsDist');
     getManifestSpy = jest.spyOn(tc, 'getManifestFromRepo');
-    getInfoManifestSpy = jest.spyOn(im, 'getInfoFromManifest');
+    // getInfoManifestSpy = jest.spyOn(im, 'getInfoFromManifest');
 
     // io
     whichSpy = jest.spyOn(io, 'which');
@@ -98,65 +99,37 @@ describe('setup-go', () => {
 
   afterAll(async () => {}, 100000);
 
-  it('can query versions', async () => {
-    let versions: im.IGoVersion[] | null = await im.getVersionsDist(
-      'https://non.existant.com/path'
-    );
-    expect(versions).toBeDefined();
-    let l: number = versions ? versions.length : 0;
-    expect(l).toBe(91);
-  });
-
-  it('can mock manifest versions', async () => {
-    let versions: tc.IToolRelease[] | null = await tc.getManifestFromRepo(
-      'actions',
-      'go-versions',
-      'mocktoken'
-    );
-    expect(versions).toBeDefined();
-    expect(versions.length).toBe(3);
-  });
-
   it('can find 1.12.17 from manifest on osx', async () => {
     os.platform = 'darwin';
     os.arch = 'x64';
-    let versions: tc.IToolRelease[] | null = await tc.getManifestFromRepo(
-      'actions',
-      'go-versions',
-      'mocktoken'
-    );
-    expect(versions).toBeDefined();
-    let match = await tc.findFromManifest('1.12.17', true, versions);
+
+    let match = await im.getInfoFromManifest('1.9.7', true, 'mocktoken');
     expect(match).toBeDefined();
-    expect(match!.version).toBe('1.12.17');
+    expect(match!.resolvedVersion).toBe('1.9.7');
+    expect(match!.type).toBe('manifest');
+    expect(match!.downloadUrl).toBe('https://github.com/actions/go-versions/releases/download/1.9.7/go-1.9.7-darwin-x64.tar.gz');
   });
 
   it('can find 12 from manifest on linux', async () => {
     os.platform = 'linux';
     os.arch = 'x64';
-    let versions: tc.IToolRelease[] | null = await tc.getManifestFromRepo(
-      'actions',
-      'go-versions',
-      'mocktoken'
-    );
-    expect(versions).toBeDefined();
-    let match = await tc.findFromManifest('1.12.17', true, versions);
+
+    let match = await im.getInfoFromManifest('1.9.7', true, 'mocktoken');
     expect(match).toBeDefined();
-    expect(match!.version).toBe('1.12.17');
+    expect(match!.resolvedVersion).toBe('1.9.7');
+    expect(match!.type).toBe('manifest');
+    expect(match!.downloadUrl).toBe('https://github.com/actions/go-versions/releases/download/1.9.7/go-1.9.7-linux-x64.tar.gz');
   });
 
   it('can find 10 from manifest on windows', async () => {
     os.platform = 'win32';
     os.arch = 'x64';
-    let versions: tc.IToolRelease[] | null = await tc.getManifestFromRepo(
-      'actions',
-      'go-versions',
-      'mocktoken'
-    );
-    expect(versions).toBeDefined();
-    let match = await tc.findFromManifest('1.12', true, versions);
+
+    let match = await im.getInfoFromManifest('1.9.7', true, 'mocktoken');
     expect(match).toBeDefined();
-    expect(match!.version).toBe('1.12.17');
+    expect(match!.resolvedVersion).toBe('1.9.7');
+    expect(match!.type).toBe('manifest');
+    expect(match!.downloadUrl).toBe('https://github.com/actions/go-versions/releases/download/1.9.7/go-1.9.7-win32-x64.zip');
   });
 
   it('finds stable match for exact dot zero version', async () => {
@@ -203,6 +176,7 @@ describe('setup-go', () => {
     await main.run();
 
     let expPath = path.join(toolPath, 'bin');
+    expect(logSpy).toHaveBeenCalledWith(`Found in cache @ ${toolPath}`);
   });
 
   it('finds a version in the cache and adds it to the path', async () => {
@@ -292,6 +266,46 @@ describe('setup-go', () => {
     );
     expect(logSpy).toHaveBeenCalledWith(
       `Acquiring 1.12.16 from ${expectedUrl}`
+    );
+
+    expect(logSpy).toHaveBeenCalledWith(
+      `Added go to the path`
+    );
+    expect(cnSpy).toHaveBeenCalledWith(`::add-path::${expPath}${osm.EOL}`);
+  });
+
+  it('downloads a major and minor from a manifest match', async () => {
+    os.platform = 'linux';
+    os.arch = 'x64';
+
+    // a version which is in the manifest
+    let versionSpec = '1.12';
+
+    inputs['go-version'] = versionSpec;
+    inputs['token'] = 'faketoken';
+
+    let expectedUrl =
+      'https://github.com/actions/go-versions/releases/download/1.12.17-20200616.21/go-1.12.17-linux-x64.tar.gz';
+
+    // ... but not in the local cache
+    findSpy.mockImplementation(() => '');
+
+    dlSpy.mockImplementation(async () => '/some/temp/path');
+    let toolPath = path.normalize('/cache/go/1.12.17/x64');
+    exSpy.mockImplementation(async () => '/some/other/temp/path');
+    cacheSpy.mockImplementation(async () => toolPath);
+
+    await main.run();
+
+    let expPath = path.join(toolPath, 'bin');
+
+    expect(dlSpy).toHaveBeenCalled();
+    expect(exSpy).toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalledWith(
+      'Not found in manifest.  Falling back to download directly from Go'
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `Acquiring 1.12.17 from ${expectedUrl}`
     );
 
     expect(logSpy).toHaveBeenCalledWith(
