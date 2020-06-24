@@ -99,7 +99,7 @@ describe('setup-go', () => {
 
   afterAll(async () => {}, 100000);
 
-  it('can find 1.12.17 from manifest on osx', async () => {
+  it('can find 1.9.7 from manifest on osx', async () => {
     os.platform = 'darwin';
     os.arch = 'x64';
 
@@ -110,7 +110,7 @@ describe('setup-go', () => {
     expect(match!.downloadUrl).toBe('https://github.com/actions/go-versions/releases/download/1.9.7/go-1.9.7-darwin-x64.tar.gz');
   });
 
-  it('can find 12 from manifest on linux', async () => {
+  it('can find 1.9 from manifest on linux', async () => {
     os.platform = 'linux';
     os.arch = 'x64';
 
@@ -121,7 +121,7 @@ describe('setup-go', () => {
     expect(match!.downloadUrl).toBe('https://github.com/actions/go-versions/releases/download/1.9.7/go-1.9.7-linux-x64.tar.gz');
   });
 
-  it('can find 10 from manifest on windows', async () => {
+  it('can find 1.9 from manifest on windows', async () => {
     os.platform = 'win32';
     os.arch = 'x64';
 
