@@ -4990,6 +4990,7 @@ function getGo(versionSpec, stable, auth) {
                 throw new Error(`Unable to find Go version '${versionSpec}' for platform ${osPlat} and architecture ${osArch}.`);
             }
             try {
+                console.log("Install from dist");
                 downloadPath = yield installGoVersion(info, undefined);
             }
             catch (err) {

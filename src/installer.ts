@@ -87,6 +87,7 @@ export async function getGo(
     }
 
     try {
+      console.log("Install from dist");
       downloadPath = await installGoVersion(info, undefined);
     } catch (err) {
       throw new Error(`Failed to download version ${versionSpec}: ${err}`);

@@ -260,6 +260,90 @@ describe('setup-go', () => {
     );
   });
 
+  it('downloads a version from a manifest match', async () => {
+    os.platform = 'linux';
+    os.arch = 'x64';
+
+    // a version which is in the manifest
+    let versionSpec = '1.12.16';
+
+    inputs['go-version'] = versionSpec;
+    inputs['token'] = 'faketoken';
+
+    let expectedUrl =
+      'https://github.com/actions/go-versions/releases/download/1.12.16-20200616.20/go-1.12.16-linux-x64.tar.gz';
+
+    // ... but not in the local cache
+    findSpy.mockImplementation(() => '');
+
+    dlSpy.mockImplementation(async () => '/some/temp/path');
+    let toolPath = path.normalize('/cache/go/1.12.16/x64');
+    exSpy.mockImplementation(async () => '/some/other/temp/path');
+    cacheSpy.mockImplementation(async () => toolPath);
+
+    await main.run();
+
+    let expPath = path.join(toolPath, 'bin');
+
+    expect(dlSpy).toHaveBeenCalled();
+    expect(exSpy).toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalledWith(
+      'Not found in manifest.  Falling back to download directly from Go'
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `Acquiring 1.12.16 from ${expectedUrl}`
+    );
+
+    expect(logSpy).toHaveBeenCalledWith(
+      `Added go to the path`
+    );
+    expect(cnSpy).toHaveBeenCalledWith(`::add-path::${expPath}${osm.EOL}`);
+  });
+
+  it('falls back to a version from node dist', async () => {
+    os.platform = 'linux';
+    os.arch = 'x64';
+
+    // a version which is not in the manifest but is in node dist
+    let versionSpec = '1.12.14';
+
+    inputs['go-version'] = versionSpec;
+    inputs['token'] = 'faketoken';
+
+    let expectedUrl =
+      'https://github.com/actions/go-versions/releases/download/1.12.14-20200616.18/go-1.12.14-linux-x64.tar.gz';
+
+    // ... but not in the local cache
+    findSpy.mockImplementation(() => '');
+
+    dlSpy.mockImplementation(async () => '/some/temp/path');
+    let toolPath = path.normalize('/cache/go/1.12.14/x64');
+    exSpy.mockImplementation(async () => '/some/other/temp/path');
+    cacheSpy.mockImplementation(async () => toolPath);
+
+    await main.run();
+
+    let expPath = path.join(toolPath, 'bin');
+    expect(logSpy).toHaveBeenCalledWith(
+      'Setup go stable version spec 1.12.14'
+    );
+    expect(findSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith('Attempting to download 1.12.14...');
+    expect(dlSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith('matching 1.12.14...');
+    expect(exSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(
+      'Not found in manifest.  Falling back to download directly from Go'
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `Install from dist`
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      `Added go to the path`
+    );
+    expect(cnSpy).toHaveBeenCalledWith(`::add-path::${expPath}${osm.EOL}`);
+  });
+
   it('reports a failed download', async () => {
     let errMsg = 'unhandled download message';
     os.platform = 'linux';
