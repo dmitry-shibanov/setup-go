@@ -80,7 +80,7 @@ describe('setup-go', () => {
     });
     dbgSpy.mockImplementation(msg => {
       // uncomment to see debug output
-      // process.stderr.write(msg + '\n');
+      process.stderr.write(msg + '\n');
     });
   });
 
