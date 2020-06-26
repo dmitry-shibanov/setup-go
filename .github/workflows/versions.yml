@@ -21,7 +21,7 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
         go: [1.12, 1.13, 1.14]
     steps:
-      - name: Checkout
+      - name: Checkout 
         uses: actions/checkout@v2
 
       - name: setup-go ${{ matrix.go }}
