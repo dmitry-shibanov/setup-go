@@ -106,14 +106,18 @@ async function installGoVersion(
 
   core.info('Extracting Go...');
   let extPath = await extractGoArchive(downloadPath);
-  core.info(`Successfully extracted go to ${extPath}`)
+  core.info(`Successfully extracted go to ${extPath}`);
   if (info.type === 'dist') {
     extPath = path.join(extPath, 'go');
   }
 
   core.info('Adding to the cache ...');
-  const cachedDir = await tc.cacheDir(extPath, 'go', makeSemver(info.resolvedVersion));
-  core.info(`Successfully cached go to ${cachedDir}`)
+  const cachedDir = await tc.cacheDir(
+    extPath,
+    'go',
+    makeSemver(info.resolvedVersion)
+  );
+  core.info(`Successfully cached go to ${cachedDir}`);
   return cachedDir;
 }
 
